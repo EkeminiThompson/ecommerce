@@ -15,6 +15,11 @@ logs/
 frontend/.cache/
 backend/.cache/
 
+# Ignore node_modules
+
+# Ignore MongoDB memory server directories
+backend/node_modules/mongodb-memory-server/
+backend/node_modules/mongodb-memory-server-core/
 
 # Editor directories and files
 .idea/
