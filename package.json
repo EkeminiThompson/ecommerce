@@ -3,17 +3,17 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "npm run dev",
-    "server": "cd backend && nodemon server.js",
-    "client": "cd frontend && npm start",
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+    "start": "NODE_ENV=production node backend/server.js",
+    "server": "NODE_ENV=production node backend/server.js",
+    "client": "cd frontend && serve -s build",
+    "build": "cd frontend && npm run build",
+    "install-all": "npm install && cd backend && npm install && cd frontend && npm install"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
-  "devDependencies": {
-    "concurrently": "^9.1.2"
+  "dependencies": {
+    "serve": "^14.2.0"
   }
 }

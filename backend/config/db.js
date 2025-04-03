@@ -1,46 +1,27 @@
-// backend/config/db.js
 const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
 
-let mongoServer;
-let isTestEnv = process.env.NODE_ENV === 'test';
+// MongoDB 4.4 connection settings
+const MONGO_CONFIG = {
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+};
 
 const connectDB = async () => {
   try {
-    if (isTestEnv) {
-      // Create in-memory MongoDB server for testing
-      mongoServer = await MongoMemoryServer.create({
-        instance: {
-          port: 27017, // Optional: Specify a custom port if necessary
-        },
-        binary: {
-          version: '5.0.0', // Optional: Ensure compatibility with your MongoDB version
-        },
-      });
-
-      console.log('In-Memory MongoDB URI:', mongoServer.getUri());
-
-      const uri = mongoServer.getUri();
-      
-      await mongoose.connect(uri, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        serverSelectionTimeoutMS: 30000, // Increase timeout to 30 seconds for in-memory server
-      });
-
-      console.log('MongoDB Connected: In-Memory Server');
-    } else {
-      // Use real MongoDB for development/production
-      await mongoose.connect(process.env.MONGO_URI, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        serverSelectionTimeoutMS: 30000, // Increase timeout for real MongoDB connections
-      });
-
-      console.log(`MongoDB Connected: ${mongoose.connection.host}`);
-    }
+    // Use environment variable or fallback name
+    const dbName = process.env.MONGO_DB_NAME || 'closet_cater_db';
+    
+    await mongoose.connect(`mongodb://localhost:27017/${dbName}`, MONGO_CONFIG);
+    
+    console.log(`MongoDB Connected: ${mongoose.connection.host}/${dbName}`);
+    
+    // Verify database exists by creating a test collection
+    await mongoose.connection.db.collection('teststartup').insertOne({ 
+      startup: new Date() 
+    });
+    
   } catch (error) {
-    console.error(`Database connection error: ${error.message}`);
+    console.error('Database connection failed:', error.message);
     process.exit(1);
   }
 };
@@ -48,13 +29,13 @@ const connectDB = async () => {
 const disconnectDB = async () => {
   try {
     await mongoose.disconnect();
-    if (mongoServer) {
-      await mongoServer.stop();
-    }
+    console.log('Database disconnected');
   } catch (err) {
-    console.error('Database disconnection error:', err);
-    process.exit(1);
+    console.error('Disconnection failed:', err);
   }
 };
 
-module.exports = { connectDB, disconnectDB };
+// Get current database name
+const getDBName = () => mongoose.connection?.name;
+
+module.exports = { connectDB, disconnectDB, getDBName };

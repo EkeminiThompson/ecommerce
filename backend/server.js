@@ -3,8 +3,8 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const { connectDB, disconnectDB } = require('./config/db'); // Import disconnectDB for cleanup
 
-// Load environment variables
-const envFile = process.env.NODE_ENV === 'test' ? '.env.test' : '.env';
+// Load environment variables based on the environment
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
 dotenv.config({ path: envFile });
 
 // Initialize Express app
@@ -19,17 +19,17 @@ app.get('/', (req, res) => {
   res.json({ message: 'Closet Cater API is running' });
 });
 
-// Connect to database
+// Connect to the database
 (async () => {
   try {
     await connectDB();
   } catch (err) {
     console.error('Database connection failed:', err);
-    process.exit(1);
+    process.exit(1); // Exit if DB connection fails
   }
 })();
 
-// Route imports
+// Route imports and setup
 console.log('Importing routes...');
 try {
   const productRoutes = require('./routes/productRoutes');
@@ -53,7 +53,7 @@ try {
   });
 } catch (err) {
   console.error('Route import failed:', err);
-  process.exit(1);
+  process.exit(1); // Exit if route import fails
 }
 
 // Error handling middleware
@@ -64,7 +64,7 @@ try {
   console.log('Error middleware mounted');
 } catch (err) {
   console.error('Error middleware setup failed:', err);
-  process.exit(1);
+  process.exit(1); // Exit if error middleware setup fails
 }
 
 // Start server
@@ -83,7 +83,7 @@ const shutdown = async () => {
   });
 };
 
-// Handle process events
+// Handle process events for graceful shutdown
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 process.on('unhandledRejection', (err) => {
