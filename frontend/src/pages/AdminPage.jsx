@@ -1,29 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Tab, Tabs, Form, Button, Alert } from 'react-bootstrap';
+import { Tab, Tabs, Form, Button, Alert, Spinner } from 'react-bootstrap';
 
-// Backend API Configuration
-const API_BASE_URL = 'http://localhost:5000/api';
+// Backend API Configuration from environment variables
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+const API_TIMEOUT = parseInt(process.env.REACT_APP_DEFAULT_TIMEOUT) || 5000;
+
 const ENDPOINTS = {
-  CREATE_ADMIN: `${API_BASE_URL}/auth/create-admin`,
-  LOGIN: `${API_BASE_URL}/auth/login`,
-  CREATE_PRODUCT: `${API_BASE_URL}/products`
+  CREATE_ADMIN: `${API_BASE_URL}${process.env.REACT_APP_CREATE_ADMIN_ENDPOINT}`,
+  LOGIN: `${API_BASE_URL}${process.env.REACT_APP_LOGIN_ENDPOINT}`,
+  PRODUCTS: `${API_BASE_URL}${process.env.REACT_APP_PRODUCTS_ENDPOINT}`
 };
+
+// Configure axios defaults
+axios.defaults.timeout = API_TIMEOUT;
 
 const AdminPage = () => {
   const navigate = useNavigate();
   
   // Tab management
-  const [activeTab, setActiveTab] = useState('createAdmin');
+  const [activeTab, setActiveTab] = useState('login');
   
   // Form states
   const [adminData, setAdminData] = useState({ 
     name: '', 
     email: '', 
+    password: '',
+    confirmPassword: ''
+  });
+  
+  const [loginData, setLoginData] = useState({ 
+    email: '', 
     password: '' 
   });
-  const [loginData, setLoginData] = useState({ email: '', password: '' });
+  
   const [productData, setProductData] = useState({
     name: '',
     price: '',
@@ -43,6 +54,13 @@ const AdminPage = () => {
   // Handle admin creation
   const handleCreateAdmin = async (e) => {
     e.preventDefault();
+    
+    // Validate passwords match
+    if (adminData.password !== adminData.confirmPassword) {
+      setMessage({ text: 'Passwords do not match', variant: 'danger' });
+      return;
+    }
+    
     setLoading(true);
     
     try {
@@ -53,13 +71,13 @@ const AdminPage = () => {
       });
       
       setMessage({ text: response.data.message, variant: 'success' });
-      setAdminData({ name: '', email: '', password: '' });
-      setActiveTab('login'); // Switch to login tab
+      setAdminData({ name: '', email: '', password: '', confirmPassword: '' });
+      setActiveTab('login');
     } catch (error) {
-      setMessage({ 
-        text: error.response?.data?.message || 'Admin creation failed', 
-        variant: 'danger' 
-      });
+      const errorMessage = error.response?.data?.message || 
+                         error.response?.data?.error || 
+                         'Admin creation failed';
+      setMessage({ text: errorMessage, variant: 'danger' });
     } finally {
       setLoading(false);
     }
@@ -86,12 +104,12 @@ const AdminPage = () => {
       
       setMessage({ text: 'Login successful', variant: 'success' });
       setLoginData({ email: '', password: '' });
-      setActiveTab('products'); // Switch to products tab
+      setActiveTab('products');
     } catch (error) {
-      setMessage({ 
-        text: error.response?.data?.message || 'Login failed', 
-        variant: 'danger' 
-      });
+      const errorMessage = error.response?.data?.message || 
+                         error.response?.data?.error || 
+                         'Login failed';
+      setMessage({ text: errorMessage, variant: 'danger' });
     } finally {
       setLoading(false);
     }
@@ -103,7 +121,7 @@ const AdminPage = () => {
     setLoading(true);
     
     try {
-      const response = await axios.post(ENDPOINTS.CREATE_PRODUCT, {
+      await axios.post(ENDPOINTS.PRODUCTS, {
         name: productData.name,
         price: parseFloat(productData.price),
         description: productData.description,
@@ -118,12 +136,9 @@ const AdminPage = () => {
         }
       });
       
-      setMessage({ 
-        text: 'Product created successfully', 
-        variant: 'success' 
-      });
+      setMessage({ text: 'Product created successfully', variant: 'success' });
       
-      // Reset product form
+      // Reset form
       setProductData({
         name: '',
         price: '',
@@ -134,16 +149,26 @@ const AdminPage = () => {
         countInStock: ''
       });
     } catch (error) {
-      setMessage({ 
-        text: error.response?.data?.message || 'Product creation failed', 
-        variant: 'danger' 
-      });
+      const errorMessage = error.response?.data?.message || 
+                         error.response?.data?.error || 
+                         'Product creation failed';
+      setMessage({ text: errorMessage, variant: 'danger' });
     } finally {
       setLoading(false);
     }
   };
 
-  // Clear messages after 5 seconds
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('adminInfo');
+    setAuthToken('');
+    setAdminInfo(null);
+    setActiveTab('login');
+    setMessage({ text: 'Logged out successfully', variant: 'success' });
+  };
+
+  // Clear messages after timeout
   useEffect(() => {
     if (message.text) {
       const timer = setTimeout(() => {
@@ -162,7 +187,17 @@ const AdminPage = () => {
 
   return (
     <div className="container py-5">
-      <h1 className="mb-4">Admin Dashboard</h1>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h1>Admin Dashboard</h1>
+        {authToken && (
+          <div>
+            <span className="me-3">Welcome, {adminInfo?.name}</span>
+            <Button variant="outline-danger" onClick={handleLogout}>
+              Logout
+            </Button>
+          </div>
+        )}
+      </div>
       
       {message.text && (
         <Alert variant={message.variant} dismissible onClose={() => setMessage({ text: '', variant: '' })}>
@@ -207,12 +242,30 @@ const AdminPage = () => {
                 placeholder="Enter password"
                 value={adminData.password}
                 onChange={(e) => setAdminData({...adminData, password: e.target.value})}
+                minLength="6"
+                required
+              />
+            </Form.Group>
+            
+            <Form.Group className="mb-3">
+              <Form.Label>Confirm Password</Form.Label>
+              <Form.Control
+                type="password"
+                placeholder="Confirm password"
+                value={adminData.confirmPassword}
+                onChange={(e) => setAdminData({...adminData, confirmPassword: e.target.value})}
+                minLength="6"
                 required
               />
             </Form.Group>
             
             <Button type="submit" variant="primary" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Admin'}
+              {loading ? (
+                <>
+                  <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2"/>
+                  Creating...
+                </>
+              ) : 'Create Admin'}
             </Button>
           </Form>
         </Tab>
@@ -243,7 +296,12 @@ const AdminPage = () => {
             </Form.Group>
             
             <Button type="submit" variant="primary" disabled={loading}>
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? (
+                <>
+                  <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2"/>
+                  Logging in...
+                </>
+              ) : 'Login'}
             </Button>
           </Form>
         </Tab>
@@ -292,7 +350,7 @@ const AdminPage = () => {
               <Form.Group className="mb-3">
                 <Form.Label>Image URL</Form.Label>
                 <Form.Control
-                  type="text"
+                  type="url"
                   placeholder="Enter image URL"
                   value={productData.image}
                   onChange={(e) => setProductData({...productData, image: e.target.value})}
@@ -335,7 +393,12 @@ const AdminPage = () => {
               </Form.Group>
               
               <Button type="submit" variant="primary" disabled={loading}>
-                {loading ? 'Creating...' : 'Create Product'}
+                {loading ? (
+                  <>
+                    <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2"/>
+                    Creating...
+                  </>
+                ) : 'Create Product'}
               </Button>
             </Form>
           </div>

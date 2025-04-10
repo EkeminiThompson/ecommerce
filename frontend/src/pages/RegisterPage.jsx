@@ -5,7 +5,7 @@ import axios from 'axios';
 import Loader from '../components/common/Loader';
 
 // Backend API Configuration
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 const REGISTER_URL = `${API_BASE_URL}/auth/create-admin`;
 
 const RegisterPage = () => {

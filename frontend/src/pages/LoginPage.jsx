@@ -6,7 +6,7 @@ import Loader from '../components/common/Loader';
 import FormContainer from '../components/common/FormContainer';
 
 // Backend API Configuration
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 const LOGIN_URL = `${API_BASE_URL}/auth/login`;
 
 const LoginPage = () => {
